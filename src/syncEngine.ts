@@ -2,6 +2,7 @@ import type { App, TFile, TFolder, TAbstractFile } from "obsidian";
 import { Notice } from "obsidian";
 import { NotionClient } from "./notionClient";
 import { MarkdownParser } from "./markdownParser";
+import { NotionToMarkdown } from "./notionToMarkdown";
 import { LinkResolver } from "./linkResolver";
 import { AttachmentUploader } from "./attachmentUploader";
 import { StateManager } from "./stateManager";
@@ -16,6 +17,7 @@ export class SyncEngine {
   private settings: PluginSettings;
   private notionClient: NotionClient;
   private parser: MarkdownParser;
+  private n2md: NotionToMarkdown;
   private linkResolver: LinkResolver;
   private attachmentUploader: AttachmentUploader;
   private stateManager: StateManager;
@@ -32,6 +34,7 @@ export class SyncEngine {
     this.stateManager = stateManager;
     this.notionClient = new NotionClient(settings.notionToken);
     this.parser = new MarkdownParser();
+    this.n2md = new NotionToMarkdown();
     this.linkResolver = new LinkResolver(app, stateManager, this.notionClient);
     this.attachmentUploader = new AttachmentUploader(
       app,
@@ -259,6 +262,114 @@ export class SyncEngine {
     } finally {
       this.isSyncing = false;
     }
+  }
+
+  // ── Pull from Notion ───────────────────────────────────────
+
+  /**
+   * Pull a single file from Notion back to Obsidian.
+   * Returns the outcome so callers can show appropriate notices.
+   *
+   * 'pulled'      – file updated from Notion
+   * 'no_change'   – Notion has no new edits, nothing to do
+   * 'conflict'    – both sides changed; local file NOT overwritten
+   * 'not_mapped'  – no Notion page mapped for this file
+   */
+  async pullCurrentFile(
+    file: TFile
+  ): Promise<"pulled" | "no_change" | "conflict" | "not_mapped"> {
+    if (!this.validateSettings()) return "not_mapped";
+
+    const mapping = this.stateManager.getFileMapping(file.path);
+    if (!mapping) return "not_mapped";
+
+    const page = await this.notionClient.getPage(mapping.notionPageId);
+    if (!page || page.archived) return "not_mapped";
+
+    const notionEditedMs = new Date(page.last_edited_time).getTime();
+    const hasNotionChanges = notionEditedMs > mapping.lastSyncedAt;
+
+    if (!hasNotionChanges) return "no_change";
+
+    // Check for local unsaved changes
+    const localContent = await this.app.vault.cachedRead(file);
+    const localHash = this.hashContent(localContent);
+    if (localHash !== mapping.lastSyncedHash) return "conflict";
+
+    // Safe to overwrite — fetch blocks and convert
+    const blocks = await this.notionClient.getBlocksWithContent(mapping.notionPageId);
+    const markdown = this.n2md.convert(blocks);
+
+    await this.app.vault.modify(file, markdown);
+
+    const newHash = this.hashContent(markdown);
+    this.stateManager.setFileMapping(file.path, {
+      ...mapping,
+      lastSyncedHash: newHash,
+      lastSyncedAt: Date.now(),
+    });
+
+    this.stateManager.addLog("info", `Pulled from Notion: ${file.path}`, file.path);
+    return "pulled";
+  }
+
+  /**
+   * Pull all mapped files from Notion.
+   * Skips files with conflicts (reports count).
+   */
+  async pullAll(): Promise<{ pulled: number; conflicts: number; skipped: number; errors: number }> {
+    if (this.isSyncing) {
+      new Notice("Sync already in progress");
+      return { pulled: 0, conflicts: 0, skipped: 0, errors: 0 };
+    }
+    if (!this.validateSettings()) return { pulled: 0, conflicts: 0, skipped: 0, errors: 0 };
+
+    this.isSyncing = true;
+    this.abortRequested = false;
+    let pulled = 0, conflicts = 0, skipped = 0, errors = 0;
+
+    try {
+      this.stateManager.addLog("info", "Starting pull from Notion");
+      new Notice("Pulling from Notion...");
+
+      const allMappings = this.stateManager.getAllFileMappings();
+      const entries = Object.entries(allMappings);
+
+      for (const [filePath, mapping] of entries) {
+        if (this.abortRequested) break;
+
+        const file = this.app.vault.getAbstractFileByPath(filePath);
+        if (!file || !("extension" in file)) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          const result = await this.pullCurrentFile(file as TFile);
+          if (result === "pulled") pulled++;
+          else if (result === "conflict") {
+            conflicts++;
+            this.stateManager.addLog("warn", `Pull conflict (local changes): ${filePath}`, filePath);
+          } else {
+            skipped++;
+          }
+        } catch (e: any) {
+          errors++;
+          this.stateManager.addLog("error", `Pull failed: ${e.message}`, filePath);
+        }
+      }
+
+      const msg = `Pull complete: ${pulled} updated, ${conflicts} conflicts, ${errors} errors`;
+      this.stateManager.addLog("info", msg);
+      new Notice(msg);
+    } catch (e: any) {
+      this.stateManager.addLog("error", `Pull failed: ${e.message}`);
+      new Notice(`Pull failed: ${e.message}`);
+    } finally {
+      this.isSyncing = false;
+    }
+
+    return { pulled, conflicts, skipped, errors };
   }
 
   // ── Internal Methods ───────────────────────────────────────

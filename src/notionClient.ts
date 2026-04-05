@@ -119,7 +119,7 @@ export class NotionClient {
     }
   }
 
-  /** List all child blocks (handles pagination) */
+  /** List all child blocks (handles pagination) — returns id+type only */
   async listAllBlocks(
     pageId: string
   ): Promise<Array<{ id: string; type: string }>> {
@@ -143,6 +143,64 @@ export class NotionClient {
     } while (cursor);
 
     return blocks;
+  }
+
+  /**
+   * Fetch all child blocks WITH full content (for pull-from-Notion).
+   * Recursively fetches children for block types that support nesting.
+   */
+  async getBlocksWithContent(pageId: string): Promise<any[]> {
+    const NESTED_TYPES = new Set([
+      "bulleted_list_item",
+      "numbered_list_item",
+      "to_do",
+      "toggle",
+      "callout",
+      "quote",
+      "column_list",
+      "column",
+    ]);
+
+    const blocks: any[] = [];
+    let cursor: string | undefined;
+
+    do {
+      const params = cursor
+        ? `?start_cursor=${cursor}&page_size=100`
+        : "?page_size=100";
+      const response = await this.request(
+        "GET",
+        `/blocks/${pageId}/children${params}`
+      );
+
+      for (const block of response.results) {
+        if (block.has_children && NESTED_TYPES.has(block.type)) {
+          block._children = await this.getBlocksWithContent(block.id);
+        } else if (block.type === "table" && block.has_children) {
+          block._children = await this.getBlocksWithContent(block.id);
+        }
+        blocks.push(block);
+      }
+
+      cursor = response.has_more ? response.next_cursor : undefined;
+    } while (cursor);
+
+    return blocks;
+  }
+
+  /**
+   * Extract the plain-text title from a Notion page object.
+   */
+  getPageTitle(page: any): string {
+    try {
+      const titleProp = page.properties?.title?.title;
+      if (Array.isArray(titleProp) && titleProp.length > 0) {
+        return titleProp
+          .map((rt: any) => rt.plain_text || rt.text?.content || "")
+          .join("");
+      }
+    } catch {}
+    return "Untitled";
   }
 
   /** Archive (soft-delete) a page */

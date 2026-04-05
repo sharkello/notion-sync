@@ -1,0 +1,104 @@
+/* ── Notion Sync Panel ─────────────────────────────────────── */
+
+.notion-sync-panel {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Toolbar — mimics VS Code SCM panel header */
+.notion-sync-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+
+.notion-sync-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.notion-sync-toolbar-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--background-modifier-border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.notion-sync-toolbar-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--icon-color);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.notion-sync-toolbar-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--icon-color-active);
+}
+
+/* Sections */
+.notion-sync-section {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.notion-sync-section-title {
+  margin: 0 0 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Mode row */
+.notion-sync-mode-row,
+.notion-sync-interval-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.notion-sync-interval-row span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.notion-sync-select {
+  flex: 1;
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  color: var(--text-normal);
+  cursor: pointer;
+}
+
+/* Status block */
+.notion-sync-status-block p {
+  margin: 2px 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.notion-sync-mode-label {
+  color: var(--text-accent) !important;
+  font-weight: 500;
+}

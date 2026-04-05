@@ -4,6 +4,7 @@ import { SyncEngine } from "./syncEngine";
 import { StateManager } from "./stateManager";
 import { NotionSyncSettingTab } from "./ui/settingsTab";
 import { SyncLogModal } from "./ui/syncLogModal";
+import { SyncPanelView, SYNC_PANEL_VIEW_TYPE } from "./ui/syncPanelView";
 import {
   SyncMode,
   DEFAULT_SETTINGS,
@@ -23,6 +24,7 @@ export default class NotionSyncPlugin extends Plugin {
   private syncEngine!: SyncEngine;
   private scheduledInterval: number | null = null;
   private saveDebounce: number | null = null;
+  private onSaveEventRef: ReturnType<typeof this.app.vault.on> | null = null;
 
   async onload(): Promise<void> {
     await this.loadState();
@@ -35,6 +37,17 @@ export default class NotionSyncPlugin extends Plugin {
 
     // Settings tab
     this.addSettingTab(new NotionSyncSettingTab(this.app, this));
+
+    // Register side panel view
+    this.registerView(
+      SYNC_PANEL_VIEW_TYPE,
+      (leaf) => new SyncPanelView(leaf, this)
+    );
+
+    // Ribbon icon — opens the sync panel
+    this.addRibbonIcon("upload-cloud", "Notion Sync", () => {
+      this.activateSyncPanel();
+    });
 
     // Register commands
     this.addCommand({
@@ -70,6 +83,26 @@ export default class NotionSyncPlugin extends Plugin {
       callback: () => this.openSyncLog(),
     });
 
+    this.addCommand({
+      id: "open-sync-panel",
+      name: "Open Notion Sync panel",
+      callback: () => this.activateSyncPanel(),
+    });
+
+    this.addCommand({
+      id: "pull-current-file",
+      name: "Pull current note from Notion",
+      editorCallback: (_editor, ctx) => {
+        if (ctx.file) this.pullCurrentFilePublic();
+      },
+    });
+
+    this.addCommand({
+      id: "pull-all",
+      name: "Pull all notes from Notion",
+      callback: () => this.pullAllPublic(),
+    });
+
     // Configure auto-sync based on mode
     this.configureSyncMode();
 
@@ -103,17 +136,15 @@ export default class NotionSyncPlugin extends Plugin {
 
     switch (this.settings.syncMode) {
       case SyncMode.OnSave:
-        this.registerEvent(
-          this.app.vault.on("modify", (file) => {
-            if (file instanceof TFile && file.extension === "md") {
-              // Debounce: wait 2s after last save before syncing
-              if (this.saveDebounce) window.clearTimeout(this.saveDebounce);
-              this.saveDebounce = window.setTimeout(() => {
-                this.syncCurrentFile(file);
-              }, 2000);
-            }
-          })
-        );
+        this.onSaveEventRef = this.app.vault.on("modify", (file) => {
+          if (file instanceof TFile && file.extension === "md") {
+            if (this.saveDebounce) window.clearTimeout(this.saveDebounce);
+            this.saveDebounce = window.setTimeout(() => {
+              this.syncCurrentFile(file);
+            }, 2000);
+          }
+        });
+        this.registerEvent(this.onSaveEventRef);
         break;
 
       case SyncMode.Scheduled:
@@ -162,6 +193,60 @@ export default class NotionSyncPlugin extends Plugin {
     this.stateManager.markClean();
   }
 
+  // ── Public wrappers called by SyncPanelView ────────────────
+
+  async syncFullVaultPublic(): Promise<void> {
+    return this.syncFullVault();
+  }
+
+  async syncIncrementalPublic(): Promise<void> {
+    return this.syncIncremental();
+  }
+
+  async syncCurrentFilePublic(): Promise<void> {
+    const file = this.app.workspace.getActiveFile();
+    if (file) return this.syncCurrentFile(file);
+    new Notice("No active file");
+  }
+
+  async pullCurrentFilePublic(): Promise<void> {
+    const file = this.app.workspace.getActiveFile();
+    if (!file) { new Notice("No active file"); return; }
+    const result = await this.syncEngine.pullCurrentFile(file);
+    const messages = {
+      pulled:      `Pulled from Notion: ${file.basename}`,
+      no_change:   `No changes in Notion: ${file.basename}`,
+      conflict:    `Conflict: both local and Notion changed. Resolve manually: ${file.basename}`,
+      not_mapped:  `Not synced yet (no Notion mapping): ${file.basename}`,
+    };
+    new Notice(messages[result]);
+    await this.saveState();
+  }
+
+  async pullAllPublic(): Promise<void> {
+    await this.syncEngine.pullAll();
+    await this.saveState();
+  }
+
+  openSyncLogPublic(): void {
+    this.openSyncLog();
+  }
+
+  /** Open (or reveal) the sync side panel in the right sidebar */
+  async activateSyncPanel(): Promise<void> {
+    const { workspace } = this.app;
+    const existing = workspace.getLeavesOfType(SYNC_PANEL_VIEW_TYPE);
+    if (existing.length > 0) {
+      workspace.revealLeaf(existing[0]);
+      return;
+    }
+    const leaf = workspace.getRightLeaf(false);
+    if (leaf) {
+      await leaf.setViewState({ type: SYNC_PANEL_VIEW_TYPE, active: true });
+      workspace.revealLeaf(leaf);
+    }
+  }
+
   // ── Private ────────────────────────────────────────────────
 
   private async loadState(): Promise<void> {
@@ -203,6 +288,14 @@ export default class NotionSyncPlugin extends Plugin {
     if (this.scheduledInterval !== null) {
       window.clearInterval(this.scheduledInterval);
       this.scheduledInterval = null;
+    }
+    if (this.onSaveEventRef !== null) {
+      this.app.vault.offref(this.onSaveEventRef);
+      this.onSaveEventRef = null;
+    }
+    if (this.saveDebounce !== null) {
+      window.clearTimeout(this.saveDebounce);
+      this.saveDebounce = null;
     }
   }
 
