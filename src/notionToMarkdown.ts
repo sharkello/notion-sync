@@ -7,13 +7,13 @@ export class NotionToMarkdown {
    * Convert an array of Notion blocks to a markdown string.
    * Blocks that have no markdown representation are silently skipped.
    */
-  convert(blocks: any[]): string {
+  convert(blocks: any[], inListContext = false): string {
     const parts: string[] = [];
     let i = 0;
 
     while (i < blocks.length) {
       const block = blocks[i];
-      const md = this.blockToMd(block);
+      const md = this.blockToMd(block, inListContext);
       if (md !== null && md !== "") {
         parts.push(md);
       }
@@ -26,7 +26,12 @@ export class NotionToMarkdown {
 
   // ── Block → Markdown ───────────────────────────────────────
 
-  private blockToMd(block: any): string | null {
+  /**
+   * @param inListContext – true when this block is a child of a list item.
+   *   In this case quote/callout render as plain indented text instead of `>`,
+   *   matching how Notion visually shows them (subtle indent, no border).
+   */
+  private blockToMd(block: any, inListContext = false): string | null {
     switch (block.type) {
       case "paragraph":
         return this.richTextToMd(block.paragraph?.rich_text) || null;
@@ -42,20 +47,20 @@ export class NotionToMarkdown {
 
       case "bulleted_list_item": {
         const text = this.richTextToMd(block.bulleted_list_item?.rich_text);
-        const children = this.convertChildren(block._children);
+        const children = this.convertListChildren(block._children);
         return `- ${text}${children}`;
       }
 
       case "numbered_list_item": {
         const text = this.richTextToMd(block.numbered_list_item?.rich_text);
-        const children = this.convertChildren(block._children);
+        const children = this.convertListChildren(block._children);
         return `1. ${text}${children}`;
       }
 
       case "to_do": {
         const checked = block.to_do?.checked ? "x" : " ";
         const text = this.richTextToMd(block.to_do?.rich_text);
-        const children = this.convertChildren(block._children);
+        const children = this.convertListChildren(block._children);
         return `- [${checked}] ${text}${children}`;
       }
 
@@ -67,6 +72,9 @@ export class NotionToMarkdown {
 
       case "quote": {
         const text = this.richTextToMd(block.quote?.rich_text);
+        // Inside a list item, Notion quotes are just indented continuation text —
+        // rendering them as `>` would produce an ugly blockquote border in Obsidian.
+        if (inListContext) return text || null;
         return text
           .split("\n")
           .map((l) => `> ${l}`)
@@ -77,6 +85,8 @@ export class NotionToMarkdown {
         const text = this.richTextToPlain(block.callout?.rich_text);
         // Skip metadata callouts we injected during push
         if (this.isMetadataCallout(text)) return null;
+        // Inside a list item, render as plain text to avoid visual clutter
+        if (inListContext) return text || null;
         const lines = text.split("\n");
         const title = lines[0] || "";
         const body = lines.slice(1).join("\n");
@@ -145,9 +155,9 @@ export class NotionToMarkdown {
 
       case "column_list":
       case "column":
-        // Render column children inline (flatten)
+        // Render column children inline (flatten), preserving context
         if (block._children?.length) {
-          return this.convert(block._children);
+          return this.convert(block._children, inListContext);
         }
         return null;
 
@@ -158,10 +168,24 @@ export class NotionToMarkdown {
 
   // ── Helpers ────────────────────────────────────────────────
 
+  /**
+   * Convert children of a list item (bulleted/numbered/to_do).
+   * Passes inListContext=true so that quote/callout children render as
+   * plain indented text instead of Obsidian blockquotes.
+   */
+  private convertListChildren(children: any[] | undefined): string {
+    if (!children || children.length === 0) return "";
+    const md = this.convert(children, true /* inListContext */);
+    if (!md) return "";
+    // Indent 2 spaces — makes child text visually nested in Obsidian
+    return "\n" + md.split("\n").map((l) => `  ${l}`).join("\n");
+  }
+
+  /** Generic children (non-list context, e.g. column_list) */
   private convertChildren(children: any[] | undefined): string {
     if (!children || children.length === 0) return "";
-    const md = this.convert(children);
-    // Indent nested items by 2 spaces
+    const md = this.convert(children, false);
+    if (!md) return "";
     return "\n" + md.split("\n").map((l) => `  ${l}`).join("\n");
   }
 
