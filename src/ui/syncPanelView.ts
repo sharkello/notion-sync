@@ -57,13 +57,13 @@ export class SyncPanelView extends ItemView {
 
     // Push group
     const pushGroup = toolbar.createDiv({ cls: "notion-sync-toolbar-group" });
-    this.addToolbarBtn(pushGroup, "upload-cloud", "Push: Sync Entire Vault → Notion", () =>
+    this.addToolbarBtn(pushGroup, "upload-cloud", "Push: Sync entire vault to Notion", () =>
       this.runAction(() => this.plugin.syncFullVaultPublic())
     );
-    this.addToolbarBtn(pushGroup, "refresh-cw", "Push: Sync Changed Files → Notion", () =>
+    this.addToolbarBtn(pushGroup, "refresh-cw", "Push: Sync changed files to Notion", () =>
       this.runAction(() => this.plugin.syncIncrementalPublic())
     );
-    this.addToolbarBtn(pushGroup, "file-up", "Push: Sync Current Note → Notion", () =>
+    this.addToolbarBtn(pushGroup, "file-up", "Push: Sync current note to Notion", () =>
       this.runAction(() => this.plugin.syncCurrentFilePublic())
     );
 
@@ -72,30 +72,29 @@ export class SyncPanelView extends ItemView {
 
     // Pull group
     const pullGroup = toolbar.createDiv({ cls: "notion-sync-toolbar-group" });
-    this.addToolbarBtn(pullGroup, "download-cloud", "Pull: All Notes ← Notion", () =>
+    this.addToolbarBtn(pullGroup, "download-cloud", "Pull: All notes from Notion", () =>
       this.runAction(() => this.plugin.pullAllPublic())
     );
-    this.addToolbarBtn(pullGroup, "file-down", "Pull: Current Note ← Notion", () =>
+    this.addToolbarBtn(pullGroup, "file-down", "Pull: Current note from Notion", () =>
       this.runAction(() => this.plugin.pullCurrentFilePublic())
     );
-    this.addToolbarBtn(pullGroup, "folder-down", "Pull New Pages from Notion", () =>
+    this.addToolbarBtn(pullGroup, "folder-down", "Pull new pages from Notion", () =>
       this.runAction(() => this.plugin.pullNewPagesPublic())
     );
 
     // Divider
     toolbar.createDiv({ cls: "notion-sync-toolbar-divider" });
 
-    this.addToolbarBtn(toolbar, "history", "Sync History", () =>
+    this.addToolbarBtn(toolbar, "history", "Sync history", () =>
       this.plugin.openHistoryModal()
     );
 
-    this.addToolbarBtn(toolbar, "list", "Open Sync Log", () =>
+    this.addToolbarBtn(toolbar, "list", "Open sync log", () =>
       this.plugin.openSyncLogPublic()
     );
 
     // ── Progress bar ───────────────────────────────────────────
-    this.progressEl = root.createDiv({ cls: "notion-sync-progress" });
-    this.progressEl.style.display = "none";
+    this.progressEl = root.createDiv({ cls: "notion-sync-progress notion-sync-progress-hidden" });
 
     const progressBar = this.progressEl.createDiv({ cls: "notion-sync-progress-bar" });
     this.progressFillEl = progressBar.createDiv({ cls: "notion-sync-progress-fill" });
@@ -103,14 +102,14 @@ export class SyncPanelView extends ItemView {
 
     // ── Mode selector ──────────────────────────────────────────
     const modeSection = root.createDiv({ cls: "notion-sync-section" });
-    modeSection.createEl("p", { text: "Auto Sync", cls: "notion-sync-section-title" });
+    modeSection.createEl("p", { text: "Auto sync", cls: "notion-sync-section-title" });
 
     const modeRow = modeSection.createDiv({ cls: "notion-sync-mode-row" });
 
     const modeSelect = modeRow.createEl("select", { cls: "notion-sync-select" });
     const options: [SyncMode, string][] = [
       [SyncMode.Manual, "Manual"],
-      [SyncMode.OnSave, "On Save"],
+      [SyncMode.OnSave, "On save"],
       [SyncMode.Scheduled, "Scheduled"],
     ];
     for (const [value, label] of options) {
@@ -118,11 +117,13 @@ export class SyncPanelView extends ItemView {
       if (this.plugin.settings.syncMode === value) opt.selected = true;
     }
 
-    modeSelect.addEventListener("change", async () => {
-      this.plugin.settings.syncMode = modeSelect.value as SyncMode;
-      await this.plugin.saveSettings();
-      this.plugin.configureSyncMode();
-      this.render();
+    modeSelect.addEventListener("change", () => {
+      void (async () => {
+        this.plugin.settings.syncMode = modeSelect.value as SyncMode;
+        await this.plugin.saveSettings();
+        this.plugin.configureSyncMode();
+        this.render();
+      })();
     });
 
     // Interval picker (only visible in Scheduled mode)
@@ -136,10 +137,12 @@ export class SyncPanelView extends ItemView {
         if (this.plugin.settings.scheduledIntervalMinutes === mins) opt.selected = true;
       }
 
-      intervalSelect.addEventListener("change", async () => {
-        this.plugin.settings.scheduledIntervalMinutes = Number(intervalSelect.value);
-        await this.plugin.saveSettings();
-        this.plugin.configureSyncMode();
+      intervalSelect.addEventListener("change", () => {
+        void (async () => {
+          this.plugin.settings.scheduledIntervalMinutes = Number(intervalSelect.value);
+          await this.plugin.saveSettings();
+          this.plugin.configureSyncMode();
+        })();
       });
     }
 
@@ -169,8 +172,8 @@ export class SyncPanelView extends ItemView {
     const mode = this.plugin.settings.syncMode;
     const modeLabel: Record<SyncMode, string> = {
       [SyncMode.Manual]: "Manual",
-      [SyncMode.CurrentFile]: "Current File",
-      [SyncMode.OnSave]: "On Save",
+      [SyncMode.CurrentFile]: "Current file",
+      [SyncMode.OnSave]: "On save",
       [SyncMode.Scheduled]: `Every ${this.plugin.settings.scheduledIntervalMinutes} min`,
     };
     this.statusEl.createEl("p", {
@@ -182,16 +185,16 @@ export class SyncPanelView extends ItemView {
   /** Show a progress bar with text and percentage */
   showProgress(text: string, percent: number): void {
     if (!this.progressEl || !this.progressFillEl || !this.progressTextEl) return;
-    this.progressEl.style.display = "";
-    this.progressFillEl.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+    this.progressEl.removeClass("notion-sync-progress-hidden");
+    this.progressFillEl.setCssProps({ "--fill-width": `${Math.max(0, Math.min(100, percent))}%` });
     this.progressTextEl.setText(text);
   }
 
   /** Hide the progress bar */
   hideProgress(): void {
     if (!this.progressEl) return;
-    this.progressEl.style.display = "none";
-    if (this.progressFillEl) this.progressFillEl.style.width = "0%";
+    this.progressEl.addClass("notion-sync-progress-hidden");
+    if (this.progressFillEl) this.progressFillEl.setCssProps({ "--fill-width": "0%" });
     if (this.progressTextEl) this.progressTextEl.setText("");
   }
 

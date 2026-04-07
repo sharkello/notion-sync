@@ -253,3 +253,72 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ── Progress hidden state ─────────────────────────────────── */
+
+.notion-sync-progress-hidden {
+  display: none;
+}
+
+.notion-sync-progress-fill {
+  width: var(--fill-width, 0%);
+}
+
+/* ── Sync Log Modal ────────────────────────────────────────── */
+
+.sync-log-entries {
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.sync-log-stats {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sync-log-filter-btn {
+  margin-right: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.sync-log-filter-btn--active {
+  font-weight: bold;
+}
+
+.sync-log-entry {
+  padding: 2px 0;
+  border-bottom: 1px solid var(--background-modifier-border-hover);
+}
+
+.sync-log-time {
+  color: var(--text-muted);
+}
+
+.sync-log-tag {
+  font-weight: bold;
+}
+
+.sync-log-info .sync-log-tag {
+  color: var(--text-muted);
+}
+
+.sync-log-warn .sync-log-tag {
+  color: var(--text-accent);
+}
+
+.sync-log-error .sync-log-tag {
+  color: var(--text-error);
+}
+
+.sync-log-path {
+  color: var(--text-muted);
+  font-size: 11px;
+}

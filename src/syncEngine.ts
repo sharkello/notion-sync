@@ -1,4 +1,5 @@
-import type { App, TFile, TFolder, TAbstractFile } from "obsidian";
+import type { App } from "obsidian";
+import { TFile, TFolder } from "obsidian";
 import { Notice, requestUrl } from "obsidian";
 import { NotionClient } from "./notionClient";
 import { MarkdownParser } from "./markdownParser";
@@ -121,7 +122,7 @@ export class SyncEngine {
             const pct = Math.round(((i + 1) / total) * 100);
             this.reportProgress(`Syncing ${i + 1}/${total}...`, pct);
           }
-        } catch (error: any) {
+        } catch (error) {
           errors++;
           this.stateManager.addLog(
             "error",
@@ -140,7 +141,7 @@ export class SyncEngine {
         `Full sync complete: ${synced} synced, ${errors} errors`
       );
       new Notice(`Sync complete: ${synced} files synced, ${errors} errors`);
-    } catch (error: any) {
+    } catch (error) {
       this.stateManager.addLog("error", `Full sync failed: ${error.message}`);
       new Notice(`Sync failed: ${error.message}`);
     } finally {
@@ -188,7 +189,7 @@ export class SyncEngine {
             await this.syncFile(file, false);
             synced++;
           }
-        } catch (error: any) {
+        } catch (error) {
           errors++;
           this.stateManager.addLog(
             "error",
@@ -210,7 +211,7 @@ export class SyncEngine {
         `Incremental sync: ${synced} updated, ${errors} errors`
       );
       new Notice(`Incremental sync: ${synced} updated, ${errors} errors`);
-    } catch (error: any) {
+    } catch (error) {
       this.stateManager.addLog("error", `Incremental sync failed: ${error.message}`);
       new Notice(`Sync failed: ${error.message}`);
     } finally {
@@ -243,7 +244,7 @@ export class SyncEngine {
         new Notice(`Synced: ${file.basename}`);
       }
       return didSync;
-    } catch (error: any) {
+    } catch (error) {
       this.stateManager.addLog(
         "error",
         `Failed to sync: ${error.message}`,
@@ -360,15 +361,15 @@ export class SyncEngine {
       for (let i = 0; i < entries.length; i++) {
         if (this.abortRequested) break;
 
-        const [filePath, mapping] = entries[i];
+        const [filePath] = entries[i];
         const file = this.app.vault.getAbstractFileByPath(filePath);
-        if (!file || !("extension" in file)) {
+        if (!(file instanceof TFile)) {
           skipped++;
           continue;
         }
 
         try {
-          const result = await this.pullCurrentFile(file as TFile);
+          const result = await this.pullCurrentFile(file);
           if (result === "pulled") pulled++;
           else skipped++;
 
@@ -376,7 +377,7 @@ export class SyncEngine {
             const pct = Math.round(((i + 1) / total) * 100);
             this.reportProgress(`Pulling ${i + 1}/${total}...`, pct);
           }
-        } catch (e: any) {
+        } catch (e) {
           errors++;
           this.stateManager.addLog("error", `Pull failed: ${e.message}`, filePath);
         }
@@ -385,7 +386,7 @@ export class SyncEngine {
       const msg = `Pull complete: ${pulled} updated, ${errors} errors`;
       this.stateManager.addLog("info", msg);
       new Notice(msg);
-    } catch (e: any) {
+    } catch (e) {
       this.stateManager.addLog("error", `Pull failed: ${e.message}`);
       new Notice(`Pull failed: ${e.message}`);
     } finally {
@@ -438,7 +439,7 @@ export class SyncEngine {
       const msg = `Pull new pages complete: ${created} created, ${errors} errors`;
       this.stateManager.addLog("info", msg);
       new Notice(msg);
-    } catch (e: any) {
+    } catch (e) {
       this.stateManager.addLog("error", `Pull new pages failed: ${e.message}`);
       new Notice(`Pull new pages failed: ${e.message}`);
     } finally {
@@ -464,7 +465,7 @@ export class SyncEngine {
     let childPages: Array<{id: string, title: string}>;
     try {
       childPages = await this.notionClient.getChildPages(notionPageId);
-    } catch (e: any) {
+    } catch (e) {
       this.stateManager.addLog("warn", `Could not fetch children of ${notionPageId}: ${e.message}`);
       return { created, errors };
     }
@@ -550,7 +551,7 @@ export class SyncEngine {
           // Determine file path
           const safeFileName = this.sanitizeFileName(child.title);
           const baseFolder = currentFolder;
-          const filePath = await this.findUniquePath(
+          const filePath = this.findUniquePath(
             baseFolder ? `${baseFolder}/${safeFileName}.md` : `${safeFileName}.md`
           );
 
@@ -591,7 +592,7 @@ export class SyncEngine {
 
           this.stateManager.addLog("info", `Created from Notion: ${filePath}`, filePath);
           created++;
-        } catch (e: any) {
+        } catch (e) {
           errors++;
           this.stateManager.addLog("error", `Failed to create page ${child.title}: ${e.message}`);
         }
@@ -660,14 +661,14 @@ export class SyncEngine {
 
     let result = markdown;
 
-    for (const { full, caption, url } of matches) {
+    for (const { full, url } of matches) {
       try {
         // Extract filename from URL
         let fileName = this.extractFileNameFromUrl(url);
         if (!fileName) continue;
 
         // Ensure unique filename in attachment folder
-        fileName = await this.findUniqueAttachmentName(attachmentFolder, fileName);
+        fileName = this.findUniqueAttachmentName(attachmentFolder, fileName);
         const attachmentPath = `${attachmentFolder}/${fileName}`;
 
         // Download the image
@@ -685,7 +686,7 @@ export class SyncEngine {
 
         // Replace URL with Obsidian embed
         result = result.replace(full, `![[${fileName}]]`);
-      } catch (e: any) {
+      } catch (e) {
         this.stateManager.addLog("warn", `Image download failed: ${e.message}`);
       }
     }
@@ -702,7 +703,7 @@ export class SyncEngine {
       // Remove query params from name
       name = name.split("?")[0];
       // Sanitize
-      name = name.replace(/[^\w.\-]/g, "_");
+      name = name.replace(/[^\w.-]/g, "_");
       // Ensure it has an extension
       if (!name.includes(".")) {
         name += ".png";
@@ -719,7 +720,7 @@ export class SyncEngine {
   }
 
   /** Ensure a unique filename in the attachment folder */
-  private async findUniqueAttachmentName(folder: string, fileName: string): Promise<string> {
+  private findUniqueAttachmentName(folder: string, fileName: string): string {
     const ext = fileName.includes(".") ? fileName.substring(fileName.lastIndexOf(".")) : "";
     const base = fileName.includes(".") ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
 
@@ -733,7 +734,7 @@ export class SyncEngine {
   }
 
   /** Find a unique file path by appending (1), (2) etc. */
-  private async findUniquePath(filePath: string): Promise<string> {
+  private findUniquePath(filePath: string): string {
     const ext = filePath.includes(".") ? filePath.substring(filePath.lastIndexOf(".")) : "";
     const base = filePath.includes(".") ? filePath.substring(0, filePath.lastIndexOf(".")) : filePath;
 
@@ -835,7 +836,7 @@ export class SyncEngine {
 
         // Update metadata properties
         if (this.settings.syncMetadata) {
-          await this.syncMetadata(existingMapping.notionPageId, content);
+          this.syncMetadata(existingMapping.notionPageId, content);
         }
 
         this.stateManager.setFileMapping(file.path, {
@@ -854,7 +855,7 @@ export class SyncEngine {
 
         this.stateManager.addLog("info", `Updated: ${file.path}`, file.path);
         return true;
-      } catch (error: any) {
+      } catch (error) {
         // If page was deleted in Notion, create a new one
         if (error?.status === 404) {
           this.stateManager.removeFileMapping(file.path);
@@ -873,7 +874,7 @@ export class SyncEngine {
 
     // Sync metadata
     if (this.settings.syncMetadata) {
-      await this.syncMetadata(pageId, content);
+      this.syncMetadata(pageId, content);
     }
 
     this.stateManager.setFileMapping(file.path, {
@@ -909,14 +910,12 @@ export class SyncEngine {
     for (const child of folder.children) {
       if (this.abortRequested) return;
 
-      if (child instanceof (this.app.vault as any).constructor) continue;
+      if (!(child instanceof TFolder)) continue;
 
-      if ((child as TAbstractFile).hasOwnProperty("children")) {
-        // It's a folder
-        const subFolder = child as TFolder;
+      const subFolder = child;
 
-        // Skip hidden folders
-        if (subFolder.name.startsWith(".")) continue;
+      // Skip hidden folders
+      if (subFolder.name.startsWith(".")) continue;
 
         let folderPageId = this.stateManager.getFolderMapping(subFolder.path);
 
@@ -935,7 +934,7 @@ export class SyncEngine {
               "info",
               `Created folder: ${subFolder.path}`
             );
-          } catch (error: any) {
+          } catch (error) {
             this.stateManager.addLog(
               "error",
               `Failed to create folder: ${error.message}`,
@@ -959,9 +958,8 @@ export class SyncEngine {
           }
         }
 
-        // Recurse into subfolder
-        await this.syncFolder(subFolder, folderPageId);
-      }
+      // Recurse into subfolder
+      await this.syncFolder(subFolder, folderPageId);
     }
   }
 
@@ -1009,32 +1007,11 @@ export class SyncEngine {
   /**
    * Extract frontmatter and sync as Notion page properties.
    */
-  private async syncMetadata(
-    pageId: string,
-    content: string
-  ): Promise<void> {
-    const frontmatter = MarkdownParser.extractFrontmatter(content);
-    if (Object.keys(frontmatter).length === 0) return;
-
-    const metaLines = Object.entries(frontmatter).map(([key, value]) => {
-      const displayValue = Array.isArray(value) ? value.join(", ") : String(value);
-      return `${key}: ${displayValue}`;
-    });
-
-    const metaBlock: NotionBlock = {
-      type: "callout",
-      callout: {
-        rich_text: [
-          {
-            type: "text",
-            text: { content: metaLines.join("\n") },
-          },
-        ],
-        icon: { type: "emoji", emoji: "\u{2139}\uFE0F" },
-        color: "blue_background",
-      },
-    };
-    // metadata included during page creation/full re-sync
+  private syncMetadata(
+    _pageId: string,
+    _content: string
+  ): void {
+    // Frontmatter sync to Notion page properties is not yet implemented
   }
 
   /**
@@ -1071,7 +1048,7 @@ export class SyncEngine {
             await this.notionClient.appendBlocks(mapping.notionPageId, blocks);
           }
         }
-      } catch (error: any) {
+      } catch (error) {
         this.stateManager.addLog(
           "warn",
           `Link resolution failed: ${error.message}`,

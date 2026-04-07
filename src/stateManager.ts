@@ -1,6 +1,5 @@
 import type { Plugin } from "obsidian";
 import type {
-  PluginSettings,
   SyncState,
   SyncMapping,
   SyncLogEntry,

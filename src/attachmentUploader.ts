@@ -1,5 +1,6 @@
-import type { App, TFile, Vault } from "obsidian";
-import type { NotionBlock } from "./types";
+import { requestUrl } from "obsidian";
+import type { App, TFile } from "obsidian";
+import type { NotionBlock, NotionBlockContent } from "./types";
 import type { StateManager } from "./stateManager";
 
 /** Supported image extensions */
@@ -49,11 +50,11 @@ export class AttachmentUploader {
 
     for (const block of blocks) {
       // Check if this is an embed placeholder callout
+      const calloutData = block.type === "callout" ? (block.callout as NotionBlockContent | undefined) : undefined;
       if (
-        block.type === "callout" &&
-        block.callout?.rich_text?.[0]?.text?.content?.startsWith("Embedded file: ")
+        calloutData?.rich_text?.[0]?.text?.content?.startsWith("Embedded file: ")
       ) {
-        const filename = block.callout.rich_text[0].text.content.replace(
+        const filename = (calloutData.rich_text![0].text as { content: string }).content.replace(
           "Embedded file: ",
           ""
         );
@@ -138,10 +139,10 @@ export class AttachmentUploader {
             ],
           },
         };
-      } catch (error: any) {
+      } catch (error) {
         this.stateManager.addLog(
           "error",
-          `Failed to upload ${file.name}: ${error.message}`,
+          `Failed to upload ${file.name}: ${error instanceof Error ? error.message : String(error)}`,
           file.path
         );
       }
@@ -172,10 +173,10 @@ export class AttachmentUploader {
             ],
           },
         };
-      } catch (error: any) {
+      } catch (error) {
         this.stateManager.addLog(
           "error",
-          `Failed to upload ${file.name}: ${error.message}`,
+          `Failed to upload ${file.name}: ${error instanceof Error ? error.message : String(error)}`,
           file.path
         );
       }
@@ -191,26 +192,24 @@ export class AttachmentUploader {
    */
   private async uploadFile(file: TFile): Promise<string> {
     const arrayBuffer = await this.app.vault.readBinary(file);
-    const blob = new Blob([arrayBuffer]);
-
-    const formData = new FormData();
-    formData.append("file", blob, file.name);
-
-    const response = await fetch(this.uploadUrl, {
+    const resp = await requestUrl({
+      url: this.uploadUrl,
       method: "POST",
-      body: formData,
+      contentType: "application/octet-stream",
+      body: arrayBuffer,
+      throw: false,
     });
 
-    if (!response.ok) {
-      throw new Error(`Upload failed: HTTP ${response.status}`);
+    if (resp.status < 200 || resp.status >= 300) {
+      throw new Error(`Upload failed: HTTP ${resp.status}`);
     }
 
-    const data = await response.json();
+    const data = resp.json as Record<string, unknown>;
     if (!data.url) {
       throw new Error("Upload response missing 'url' field");
     }
 
-    return data.url;
+    return data.url as string;
   }
 
   /**

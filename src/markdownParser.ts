@@ -39,35 +39,36 @@ export class MarkdownParser {
   /**
    * Extract frontmatter as key-value pairs.
    */
-  static extractFrontmatter(content: string): Record<string, any> {
+  static extractFrontmatter(content: string): Record<string, unknown> {
     if (!content.startsWith("---")) return {};
     const endIndex = content.indexOf("\n---", 3);
     if (endIndex === -1) return {};
 
     const yaml = content.slice(4, endIndex);
-    const result: Record<string, any> = {};
+    const result: Record<string, unknown> = {};
 
     for (const line of yaml.split("\n")) {
       const colonIdx = line.indexOf(":");
       if (colonIdx === -1) continue;
 
       const key = line.slice(0, colonIdx).trim();
-      let value: any = line.slice(colonIdx + 1).trim();
+      const strValue = line.slice(colonIdx + 1).trim();
+      let value: unknown;
 
       // Parse array syntax: [item1, item2]
-      if (value.startsWith("[") && value.endsWith("]")) {
-        value = value
+      if (strValue.startsWith("[") && strValue.endsWith("]")) {
+        value = strValue
           .slice(1, -1)
           .split(",")
           .map((s: string) => s.trim().replace(/^['"]|['"]$/g, ""));
       }
       // Parse boolean
-      else if (value === "true") value = true;
-      else if (value === "false") value = false;
+      else if (strValue === "true") value = true;
+      else if (strValue === "false") value = false;
       // Parse number
-      else if (/^\d+$/.test(value)) value = parseInt(value, 10);
+      else if (/^\d+$/.test(strValue)) value = parseInt(strValue, 10);
       // Strip quotes
-      else value = value.replace(/^['"]|['"]$/g, "");
+      else value = strValue.replace(/^['"]|['"]$/g, "");
 
       if (key) result[key] = value;
     }
@@ -266,7 +267,7 @@ export class MarkdownParser {
   private parseTable(
     lines: string[],
     startIndex: number
-  ): { block: NotionBlock; nextIndex: number } {
+  ): { block: NotionBlock | null; nextIndex: number } {
     const rows: string[][] = [];
     let i = startIndex;
 
@@ -288,7 +289,7 @@ export class MarkdownParser {
     }
 
     if (rows.length === 0) {
-      return { block: null as any, nextIndex: i };
+      return { block: null, nextIndex: i };
     }
 
     const tableWidth = rows[0].length;
@@ -421,9 +422,9 @@ export class MarkdownParser {
   private parseChecklistItem(
     lines: string[],
     startIndex: number
-  ): { block: NotionBlock; nextIndex: number } {
+  ): { block: NotionBlock | null; nextIndex: number } {
     const match = lines[startIndex].match(/^(\s*)- \[([ xX])\]\s+(.+)$/);
-    if (!match) return { block: null as any, nextIndex: startIndex + 1 };
+    if (!match) return { block: null, nextIndex: startIndex + 1 };
 
     const indent = match[1].length;
     const checked = match[2] !== " ";
@@ -467,9 +468,9 @@ export class MarkdownParser {
   private parseBulletList(
     lines: string[],
     startIndex: number
-  ): { block: NotionBlock; nextIndex: number } {
+  ): { block: NotionBlock | null; nextIndex: number } {
     const match = lines[startIndex].match(/^(\s*)[-*+]\s+(.+)$/);
-    if (!match) return { block: null as any, nextIndex: startIndex + 1 };
+    if (!match) return { block: null, nextIndex: startIndex + 1 };
 
     const indent = match[1].length;
     const text = match[2];
@@ -510,9 +511,9 @@ export class MarkdownParser {
   private parseNumberedList(
     lines: string[],
     startIndex: number
-  ): { block: NotionBlock; nextIndex: number } {
+  ): { block: NotionBlock | null; nextIndex: number } {
     const match = lines[startIndex].match(/^(\s*)\d+\.\s+(.+)$/);
-    if (!match) return { block: null as any, nextIndex: startIndex + 1 };
+    if (!match) return { block: null, nextIndex: startIndex + 1 };
 
     const indent = match[1].length;
     const text = match[2];
@@ -722,7 +723,7 @@ export class MarkdownParser {
 
       // Plain text: consume until next formatting marker
       const nextMarker = remaining.search(
-        /[`*_~\[!]|\[\[/
+        /[`*_~[!]|\[\[/
       );
       if (nextMarker === -1) {
         // No more markers — rest is plain text

@@ -82,7 +82,52 @@ export interface NotionRichText {
 /** Notion block object for creation */
 export interface NotionBlock {
   type: string;
-  [key: string]: any;
+  [key: string]: unknown;
+}
+
+/** Rich text segment from Notion API */
+export interface NotionRichTextObject {
+  type?: string;
+  plain_text?: string;
+  href?: string | null;
+  text?: { content: string; link?: { url: string } | null };
+  annotations?: {
+    bold?: boolean;
+    italic?: boolean;
+    strikethrough?: boolean;
+    underline?: boolean;
+    code?: boolean;
+    color?: string;
+  };
+}
+
+/** Typed content fields common to Notion block types */
+export interface NotionBlockContent {
+  rich_text?: NotionRichTextObject[];
+  checked?: boolean;
+  language?: string;
+  url?: string;
+  caption?: NotionRichTextObject[];
+  cells?: NotionRichTextObject[][][];
+  table_width?: number;
+  has_column_header?: boolean;
+  icon?: { type?: string; emoji?: string };
+  color?: string;
+  type?: string;
+  external?: { url?: string };
+  file?: { url?: string };
+  child_page?: { title?: string };
+  bookmark?: { url?: string; caption?: NotionRichTextObject[] };
+  table_row?: { cells?: NotionRichTextObject[][] };
+}
+
+/** Notion block object from the REST API (used when pulling from Notion) */
+export interface NotionApiBlock {
+  id: string;
+  type: string;
+  has_children?: boolean;
+  _children?: NotionApiBlock[];
+  [key: string]: unknown;
 }
 
 // ── Sync History ───────────────────────────────────────────

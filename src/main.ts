@@ -10,7 +10,6 @@ import {
   SyncMode,
   DEFAULT_SETTINGS,
   DEFAULT_SYNC_STATE,
-  DEFAULT_SYNC_HISTORY,
 } from "./types";
 import type { PluginSettings, SyncState, SyncHistory } from "./types";
 
@@ -58,14 +57,14 @@ export default class NotionSyncPlugin extends Plugin {
 
     // Ribbon icon — opens the sync panel
     this.addRibbonIcon("upload-cloud", "Notion Sync", () => {
-      this.activateSyncPanel();
+      void this.activateSyncPanel();
     });
 
     // Register commands
     this.addCommand({
       id: "sync-vault",
       name: "Sync entire vault to Notion",
-      callback: () => this.syncFullVault(),
+      callback: () => { void this.syncFullVault(); },
     });
 
     this.addCommand({
@@ -73,20 +72,20 @@ export default class NotionSyncPlugin extends Plugin {
       name: "Sync current note to Notion",
       editorCallback: (_editor, ctx) => {
         const file = ctx.file;
-        if (file) this.syncCurrentFile(file);
+        if (file) void this.syncCurrentFile(file);
       },
     });
 
     this.addCommand({
       id: "sync-incremental",
       name: "Sync changed files to Notion",
-      callback: () => this.syncIncremental(),
+      callback: () => { void this.syncIncremental(); },
     });
 
     this.addCommand({
       id: "rebuild-hierarchy",
       name: "Rebuild Notion hierarchy",
-      callback: () => this.rebuildHierarchy(),
+      callback: () => { void this.rebuildHierarchy(); },
     });
 
     this.addCommand({
@@ -97,28 +96,28 @@ export default class NotionSyncPlugin extends Plugin {
 
     this.addCommand({
       id: "open-sync-panel",
-      name: "Open Notion Sync panel",
-      callback: () => this.activateSyncPanel(),
+      name: "Open sync panel",
+      callback: () => { void this.activateSyncPanel(); },
     });
 
     this.addCommand({
       id: "pull-current-file",
       name: "Pull current note from Notion",
       editorCallback: (_editor, ctx) => {
-        if (ctx.file) this.pullCurrentFilePublic();
+        if (ctx.file) void this.pullCurrentFilePublic();
       },
     });
 
     this.addCommand({
       id: "pull-all",
       name: "Pull all notes from Notion",
-      callback: () => this.pullAllPublic(),
+      callback: () => { void this.pullAllPublic(); },
     });
 
     this.addCommand({
       id: "pull-new-pages",
       name: "Pull new pages from Notion",
-      callback: () => this.pullNewPagesPublic(),
+      callback: () => { void this.pullNewPagesPublic(); },
     });
 
     // Configure auto-sync based on mode
@@ -258,7 +257,7 @@ export default class NotionSyncPlugin extends Plugin {
           if (file instanceof TFile && file.extension === "md") {
             if (this.saveDebounce) window.clearTimeout(this.saveDebounce);
             this.saveDebounce = window.setTimeout(() => {
-              this.syncCurrentFile(file);
+              void this.syncCurrentFile(file);
             }, 2000);
           }
         });
@@ -286,8 +285,8 @@ export default class NotionSyncPlugin extends Plugin {
       const ok = await client.testConnection(this.settings.rootPageId);
       new Notice(ok ? "Connection successful!" : "Connection failed: page not found or not shared with integration.");
       return ok;
-    } catch (e: any) {
-      new Notice(`Connection failed: ${e?.message || e}`);
+    } catch (e) {
+      new Notice(`Connection failed: ${e instanceof Error ? e.message : String(e)}`);
       console.error("[NotionSync] testConnection error:", e);
       return false;
     } finally {
@@ -578,6 +577,6 @@ export default class NotionSyncPlugin extends Plugin {
 
   private debounceSaveState(): void {
     if (this.saveDebounce) window.clearTimeout(this.saveDebounce);
-    this.saveDebounce = window.setTimeout(() => this.saveState(), 1000);
+    this.saveDebounce = window.setTimeout(() => { void this.saveState(); }, 1000);
   }
 }

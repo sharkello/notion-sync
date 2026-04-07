@@ -17,14 +17,14 @@ export class NotionSyncSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "Notion Sync Settings" });
+    new Setting(containerEl).setName("Notion sync settings").setHeading();
 
     // ── Connection ────────────────────────────────────────────
 
-    containerEl.createEl("h3", { text: "Connection" });
+    new Setting(containerEl).setName("Connection").setHeading();
 
     new Setting(containerEl)
-      .setName("Notion API Token")
+      .setName("Notion API token")
       .setDesc(
         "Your Notion integration secret token. " +
         "Create one at notion.so/my-integrations."
@@ -40,7 +40,7 @@ export class NotionSyncSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Root Notion Page ID")
+      .setName("Root Notion page ID")
       .setDesc(
         "The ID of the Notion page that will serve as the vault root. " +
         "Find it in the page URL: notion.so/Page-Title-<PAGE_ID>."
@@ -56,7 +56,7 @@ export class NotionSyncSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Test Connection")
+      .setName("Test connection")
       .setDesc("Verify that the plugin can connect to Notion.")
       .addButton((button) =>
         button.setButtonText("Test").onClick(async () => {
@@ -77,29 +77,29 @@ export class NotionSyncSettingTab extends PluginSettingTab {
 
     // ── Sync Mode ─────────────────────────────────────────────
 
-    containerEl.createEl("h3", { text: "Sync Mode" });
+    new Setting(containerEl).setName("Sync mode").setHeading();
 
     new Setting(containerEl)
-      .setName("Sync Mode")
+      .setName("Sync mode")
       .setDesc("When to automatically sync files to Notion.")
       .addDropdown((dropdown) =>
         dropdown
-          .addOption(SyncMode.Manual, "Manual Only")
-          .addOption(SyncMode.CurrentFile, "Current File on Command")
-          .addOption(SyncMode.OnSave, "Auto Sync on Save")
-          .addOption(SyncMode.Scheduled, "Scheduled Interval")
+          .addOption(SyncMode.Manual, "Manual only")
+          .addOption(SyncMode.CurrentFile, "Current file on command")
+          .addOption(SyncMode.OnSave, "Auto sync on save")
+          .addOption(SyncMode.Scheduled, "Scheduled interval")
           .setValue(this.plugin.settings.syncMode)
           .onChange(async (value) => {
             this.plugin.settings.syncMode = value as SyncMode;
             await this.plugin.saveSettings();
             this.plugin.configureSyncMode();
-            this.display(); // Refresh to show/hide interval setting
+            this.display();
           })
       );
 
     if (this.plugin.settings.syncMode === SyncMode.Scheduled) {
       new Setting(containerEl)
-        .setName("Sync Interval (minutes)")
+        .setName("Sync interval (minutes)")
         .setDesc("How often to run automatic sync.")
         .addSlider((slider) =>
           slider
@@ -116,10 +116,10 @@ export class NotionSyncSettingTab extends PluginSettingTab {
 
     // ── Content Options ───────────────────────────────────────
 
-    containerEl.createEl("h3", { text: "Content" });
+    new Setting(containerEl).setName("Content").setHeading();
 
     new Setting(containerEl)
-      .setName("Sync Attachments")
+      .setName("Sync attachments")
       .setDesc(
         "Include images, PDFs, and other embedded files. " +
         "Requires an upload endpoint for local files."
@@ -136,7 +136,7 @@ export class NotionSyncSettingTab extends PluginSettingTab {
 
     if (this.plugin.settings.syncAttachments) {
       new Setting(containerEl)
-        .setName("Attachment Upload URL")
+        .setName("Attachment upload URL")
         .setDesc(
           "POST endpoint for uploading local files. " +
           "Should accept multipart/form-data and return { url: string }. " +
@@ -154,7 +154,7 @@ export class NotionSyncSettingTab extends PluginSettingTab {
     }
 
     new Setting(containerEl)
-      .setName("Sync Metadata")
+      .setName("Sync metadata")
       .setDesc("Include YAML frontmatter as a metadata block in Notion pages.")
       .addToggle((toggle) =>
         toggle
@@ -166,7 +166,7 @@ export class NotionSyncSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Download Images on Pull")
+      .setName("Download images on pull")
       .setDesc(
         "When pulling from Notion, download images to a local _attachments folder " +
         "and replace URLs with Obsidian ![[filename]] embeds."
@@ -182,7 +182,7 @@ export class NotionSyncSettingTab extends PluginSettingTab {
 
     // ── Status ────────────────────────────────────────────────
 
-    containerEl.createEl("h3", { text: "Status" });
+    new Setting(containerEl).setName("Status").setHeading();
 
     const statusEl = containerEl.createDiv({ cls: "notion-sync-status" });
     statusEl.createEl("p", {
@@ -201,10 +201,10 @@ export class NotionSyncSettingTab extends PluginSettingTab {
 
     // ── Danger Zone ───────────────────────────────────────────
 
-    containerEl.createEl("h3", { text: "Danger Zone" });
+    new Setting(containerEl).setName("Danger zone").setHeading();
 
     new Setting(containerEl)
-      .setName("Reset Sync State")
+      .setName("Reset sync state")
       .setDesc(
         "Clear all sync mappings. The next sync will treat everything as new. " +
         "Existing Notion pages will NOT be deleted."

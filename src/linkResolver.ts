@@ -1,5 +1,5 @@
 import type { App, TFile } from "obsidian";
-import type { NotionBlock, NotionRichText } from "./types";
+import type { NotionBlock, NotionRichText, NotionBlockContent } from "./types";
 import type { StateManager } from "./stateManager";
 import type { NotionClient } from "./notionClient";
 
@@ -89,20 +89,21 @@ export class LinkResolver {
     block: NotionBlock,
     linkMap: Map<string, string>
   ): NotionBlock {
-    const blockData = block[block.type];
+    const blockData = block[block.type] as NotionBlockContent | undefined;
     if (!blockData) return block;
 
     // Process rich_text arrays
     if (blockData.rich_text && Array.isArray(blockData.rich_text)) {
-      blockData.rich_text = this.resolveRichTextLinks(
-        blockData.rich_text,
+      (blockData as Record<string, unknown>)["rich_text"] = this.resolveRichTextLinks(
+        blockData.rich_text as NotionRichText[],
         linkMap
       );
     }
 
     // Process children recursively
-    if (blockData.children && Array.isArray(blockData.children)) {
-      blockData.children = blockData.children.map((child: NotionBlock) =>
+    const children = (blockData as Record<string, unknown>)["children"];
+    if (Array.isArray(children)) {
+      (blockData as Record<string, unknown>)["children"] = children.map((child: NotionBlock) =>
         this.resolveBlockLinksRecursive(child, linkMap)
       );
     }

@@ -4,9 +4,9 @@
  */
 export class RateLimiter {
   private queue: Array<{
-    fn: () => Promise<any>;
-    resolve: (value: any) => void;
-    reject: (error: any) => void;
+    fn: () => Promise<unknown>;
+    resolve: (value: unknown) => void;
+    reject: (error: unknown) => void;
   }> = [];
   private running = 0;
   private readonly maxConcurrent: number;
@@ -62,8 +62,9 @@ export class RateLimiter {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await fn();
-      } catch (error: any) {
-        const isRateLimited = error?.status === 429 || error?.code === "rate_limited";
+      } catch (error) {
+        const errObj = error as Record<string, unknown> | null;
+        const isRateLimited = errObj?.status === 429 || errObj?.code === "rate_limited";
         if (!isRateLimited || attempt === maxRetries) throw error;
 
         const retryAfter = this.parseRetryAfter(error);
@@ -74,10 +75,11 @@ export class RateLimiter {
     throw new Error("Rate limiter: max retries exceeded");
   }
 
-  private parseRetryAfter(error: any): number | null {
-    const header = error?.headers?.["retry-after"];
-    if (header) {
-      const seconds = parseFloat(header);
+  private parseRetryAfter(error: unknown): number | null {
+    const errObj = error as Record<string, unknown> | null;
+    const headers = errObj?.headers as Record<string, string> | undefined;
+    if (headers) {
+      const seconds = parseFloat(headers["retry-after"] ?? "");
       if (!isNaN(seconds)) return seconds * 1000;
     }
     return null;

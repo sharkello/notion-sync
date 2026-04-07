@@ -18,7 +18,7 @@ export class HistoryModal extends Modal {
     contentEl.empty();
     contentEl.addClass("notion-sync-history-modal");
 
-    contentEl.createEl("h2", { text: "Sync History" });
+    contentEl.createEl("h2", { text: "Sync history" });
 
     const entries = this.plugin.stateManager.getHistory().slice(0, 50);
 
@@ -78,7 +78,7 @@ export class HistoryModal extends Modal {
         try {
           await this.plugin.rollbackFile(entry.id);
           rollbackBtn.setText("Done");
-        } catch (e: any) {
+        } catch {
           rollbackBtn.setText("Failed");
         }
       });

@@ -19,7 +19,7 @@ export class SyncLogModal extends Modal {
     contentEl.addClass("notion-sync-log-modal");
 
     // Header
-    contentEl.createEl("h2", { text: "Sync Log" });
+    contentEl.createEl("h2", { text: "Sync log" });
 
     // Filter bar
     const filterBar = contentEl.createDiv({ cls: "sync-log-filter" });
@@ -30,14 +30,6 @@ export class SyncLogModal extends Modal {
 
     // Log container
     const logContainer = contentEl.createDiv({ cls: "sync-log-entries" });
-    logContainer.style.maxHeight = "400px";
-    logContainer.style.overflowY = "auto";
-    logContainer.style.fontFamily = "monospace";
-    logContainer.style.fontSize = "12px";
-    logContainer.style.padding = "8px";
-    logContainer.style.border = "1px solid var(--background-modifier-border)";
-    logContainer.style.borderRadius = "4px";
-    logContainer.style.marginTop = "8px";
 
     this.renderLogs(logContainer);
 
@@ -46,9 +38,6 @@ export class SyncLogModal extends Modal {
 
     // Stats
     const statsEl = contentEl.createDiv({ cls: "sync-log-stats" });
-    statsEl.style.marginTop = "8px";
-    statsEl.style.fontSize = "12px";
-    statsEl.style.color = "var(--text-muted)";
 
     const infos = this.logs.filter((l) => l.level === "info").length;
     const warns = this.logs.filter((l) => l.level === "warn").length;
@@ -61,18 +50,16 @@ export class SyncLogModal extends Modal {
     label: string,
     filter: typeof this.filter
   ): void {
-    const btn = container.createEl("button", { text: label });
-    btn.style.marginRight = "4px";
-    btn.style.padding = "2px 8px";
-    btn.style.fontSize = "12px";
-
-    if (this.filter === filter) {
-      btn.style.fontWeight = "bold";
-    }
+    const btn = container.createEl("button", {
+      text: label,
+      cls: this.filter === filter
+        ? "sync-log-filter-btn sync-log-filter-btn--active"
+        : "sync-log-filter-btn",
+    });
 
     btn.addEventListener("click", () => {
       this.filter = filter;
-      this.onOpen(); // Re-render
+      this.onOpen();
     });
   }
 
@@ -92,30 +79,15 @@ export class SyncLogModal extends Modal {
 
     for (const entry of filtered) {
       const row = container.createDiv({ cls: `sync-log-entry sync-log-${entry.level}` });
-      row.style.padding = "2px 0";
-      row.style.borderBottom = "1px solid var(--background-modifier-border-hover)";
 
       const time = new Date(entry.timestamp).toLocaleTimeString();
 
-      const levelColors: Record<string, string> = {
-        info: "var(--text-muted)",
-        warn: "var(--text-accent)",
-        error: "var(--text-error)",
-      };
-
-      const levelEl = row.createSpan({ text: `[${time}] ` });
-      levelEl.style.color = "var(--text-muted)";
-
-      const tagEl = row.createSpan({ text: `[${entry.level.toUpperCase()}] ` });
-      tagEl.style.color = levelColors[entry.level] || "var(--text-normal)";
-      tagEl.style.fontWeight = "bold";
-
+      row.createSpan({ text: `[${time}] `, cls: "sync-log-time" });
+      row.createSpan({ text: `[${entry.level.toUpperCase()}] `, cls: "sync-log-tag" });
       row.createSpan({ text: entry.message });
 
       if (entry.filePath) {
-        const pathEl = row.createSpan({ text: ` (${entry.filePath})` });
-        pathEl.style.color = "var(--text-muted)";
-        pathEl.style.fontSize = "11px";
+        row.createSpan({ text: ` (${entry.filePath})`, cls: "sync-log-path" });
       }
     }
   }
