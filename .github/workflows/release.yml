@@ -11,6 +11,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
 
@@ -28,35 +29,25 @@ jobs:
       - name: Create release package
         run: npm run package
 
-      - name: Create provenance.json
-        run: |
-          echo "{\"source\":\"${{ github.repository }}\",\"commit\":\"${{ github.sha }}\",\"built_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > provenance.json
+      - name: Generate artifact attestations
+        uses: actions/attest@v4
+        with:
+          subject-path: main.js
 
-      - name: Install Cosign (sigstore)
-        uses: sigstore/cosign-installer@v2
-
-      - name: Sign artifact (keyless)
-        env:
-          COSIGN_EXPERIMENTAL: "1"
-        run: |
-          cosign version
-          # Keyless sign the release zip. This uses GitHub Actions OIDC and Sigstore.
-          cosign sign-blob --keyless --output-signature notion-sync-release.zip.sig notion-sync-release.zip
-          # Also output the signing certificate
-          cosign sign-blob --keyless --output-certificate notion-sync-release.zip.crt --output-signature /dev/null notion-sync-release.zip || true
+      - name: Generate styles attestation
+        uses: actions/attest@v4
+        with:
+          subject-path: styles.css
 
       - name: Create GitHub Release and upload assets
         uses: ncipollo/release-action@v1
         with:
           artifacts: |
-            notion-sync-release.zip
-            notion-sync-release.zip.sig
-            notion-sync-release.zip.crt
-            provenance.json
-          tag: ${{ github.ref }}
+            main.js
+            styles.css
+            manifest.json
+            versions.json
+          tag: ${{ github.ref_name }}
 
-# Note: Reviewers recommended cryptographic artifact attestations.
-# To add cryptographic attestations, sign the built artifact (notion-sync-release.zip)
-# with a tool such as Sigstore/cosign in this workflow and upload the signature
-# alongside the release assets. See:
-# https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds
+# Note: GitHub artifact attestations are generated for main.js and styles.css
+# via actions/attest so the release assets are covered by platform-supported provenance.

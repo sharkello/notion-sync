@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "node esbuild.config.mjs production",
-    "package": "npm run build && node scripts/package.js"
+    "package": "npm run build && node scripts/package.mjs"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
