@@ -112,13 +112,34 @@ export class AttachmentUploader {
 
     if (resolved) return resolved;
 
-    // Fallback: search by name across the vault
-    const allFiles = this.app.vault.getFiles();
-    return (
-      allFiles.find(
-        (f) => f.name === filename || f.path.endsWith(`/${filename}`)
-      ) || null
-    );
+    // Fallback: avoid enumerating the entire vault. Try common locations:
+    // 1) same folder as source file
+    // 2) an "attachments" subfolder next to the source file
+    // 3) a top-level "attachments" folder
+    // 4) filename at repo root
+    const tryPaths: string[] = [];
+    const sourceFolder = sourceFilePath.includes("/")
+      ? sourceFilePath.slice(0, sourceFilePath.lastIndexOf("/"))
+      : "";
+
+    if (sourceFolder) {
+      tryPaths.push(`${sourceFolder}/${filename}`);
+      tryPaths.push(`${sourceFolder}/attachments/${filename}`);
+    }
+
+    tryPaths.push(`attachments/${filename}`);
+    tryPaths.push(filename);
+
+    for (const p of tryPaths) {
+      const abstract = this.app.vault.getAbstractFileByPath(p);
+      // Only return if a file exists at the path and it's a TFile
+      if (abstract && (abstract as any).path === p && (abstract as any).name) {
+        return abstract as unknown as TFile;
+      }
+    }
+
+    // Not found
+    return null;
   }
 
   /**

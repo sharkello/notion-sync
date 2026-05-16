@@ -5,13 +5,15 @@
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "node esbuild.config.mjs production"
+    "build": "node esbuild.config.mjs production",
+    "package": "npm run build && node scripts/package.js"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
     "@typescript-eslint/eslint-plugin": "^8.58.0",
     "@typescript-eslint/parser": "^8.58.0",
     "esbuild": "^0.20.0",
+    "archiver": "^5.3.1",
     "eslint": "^9.39.4",
     "eslint-plugin-obsidianmd": "^0.1.9",
     "globals": "^17.4.0",

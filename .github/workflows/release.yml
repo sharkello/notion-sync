@@ -1,0 +1,62 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (production)
+        run: npm run build
+
+      - name: Create release package
+        run: npm run package
+
+      - name: Create provenance.json
+        run: |
+          echo "{\"source\":\"${{ github.repository }}\",\"commit\":\"${{ github.sha }}\",\"built_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > provenance.json
+
+      - name: Install Cosign (sigstore)
+        uses: sigstore/cosign-installer@v2
+
+      - name: Sign artifact (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign version
+          # Keyless sign the release zip. This uses GitHub Actions OIDC and Sigstore.
+          cosign sign-blob --keyless --output-signature notion-sync-release.zip.sig notion-sync-release.zip
+          # Also output the signing certificate
+          cosign sign-blob --keyless --output-certificate notion-sync-release.zip.crt --output-signature /dev/null notion-sync-release.zip || true
+
+      - name: Create GitHub Release and upload assets
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: |
+            notion-sync-release.zip
+            notion-sync-release.zip.sig
+            notion-sync-release.zip.crt
+            provenance.json
+          tag: ${{ github.ref }}
+
+# Note: Reviewers recommended cryptographic artifact attestations.
+# To add cryptographic attestations, sign the built artifact (notion-sync-release.zip)
+# with a tool such as Sigstore/cosign in this workflow and upload the signature
+# alongside the release assets. See:
+# https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds
