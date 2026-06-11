@@ -1,6 +1,7 @@
 import { requestUrl } from "obsidian";
 import { RateLimiter } from "./rateLimiter";
 import type { NotionBlock, NotionApiBlock } from "./types";
+import type { NotionApi } from "./sync/contracts";
 
 const NOTION_API = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
@@ -20,7 +21,7 @@ interface NotionApiError extends Error {
  * Wrapper around the Notion REST API using Obsidian's requestUrl.
  * Avoids the @notionhq/client SDK to prevent Electron/CORS issues.
  */
-export class NotionClient {
+export class NotionClient implements NotionApi {
   private token: string;
   private limiter: RateLimiter;
 

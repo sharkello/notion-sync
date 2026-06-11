@@ -1,7 +1,6 @@
 import type { App, TFile } from "obsidian";
 import type { NotionBlock, NotionRichText, NotionBlockContent } from "./types";
 import type { StateManager } from "./stateManager";
-import type { NotionClient } from "./notionClient";
 
 /**
  * Resolves Obsidian internal [[wikilinks]] to Notion page URLs.
@@ -11,12 +10,10 @@ import type { NotionClient } from "./notionClient";
 export class LinkResolver {
   private app: App;
   private stateManager: StateManager;
-  private notionClient: NotionClient;
 
-  constructor(app: App, stateManager: StateManager, notionClient: NotionClient) {
+  constructor(app: App, stateManager: StateManager) {
     this.app = app;
     this.stateManager = stateManager;
-    this.notionClient = notionClient;
   }
 
   /**
