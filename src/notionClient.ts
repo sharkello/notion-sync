@@ -1,4 +1,4 @@
-import { activeWindow, requestUrl } from "obsidian";
+import { requestUrl } from "obsidian";
 import { RateLimiter } from "./rateLimiter";
 import type { NotionBlock, NotionApiBlock } from "./types";
 

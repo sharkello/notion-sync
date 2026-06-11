@@ -1,5 +1,3 @@
-import { activeWindow } from "obsidian";
-
 /**
  * Queue-based rate limiter for Notion API.
  * Enforces max 3 requests/second with exponential backoff on 429 errors.

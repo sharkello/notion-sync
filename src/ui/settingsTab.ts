@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, activeWindow } from "obsidian";
+import { App, PluginSettingTab, Setting } from "obsidian";
 import type NotionSyncPlugin from "../main";
 import { SyncMode } from "../types";
 

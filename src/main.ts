@@ -1,4 +1,4 @@
-import { Plugin, TFile, Notice, activeDocument, activeWindow } from "obsidian";
+import { Plugin, TFile, Notice } from "obsidian";
 import { NotionClient } from "./notionClient";
 import { SyncEngine } from "./syncEngine";
 import { StateManager } from "./stateManager";
@@ -264,13 +264,15 @@ export default class NotionSyncPlugin extends Plugin {
         this.registerEvent(this.onSaveEventRef);
         break;
 
-      case SyncMode.Scheduled:
-        this.scheduledInterval = activeWindow.setInterval(
+      case SyncMode.Scheduled: {
+        const intervalId = activeWindow.setInterval(
           () => { void this.syncIncremental(); },
           this.settings.scheduledIntervalMinutes * 60 * 1000
         );
-        this.registerInterval(this.scheduledInterval);
+        this.scheduledInterval = intervalId;
+        this.registerInterval(intervalId);
         break;
+      }
     }
   }
 
