@@ -54,7 +54,7 @@ export class NotionClient {
       if (resp.status === 429) {
         const retryAfter = resp.headers["retry-after"] || "1";
         const waitMs = parseFloat(retryAfter) * 1000;
-        await new Promise((r) => activeWindow.setTimeout(r, waitMs));
+        await new Promise((r) => window.setTimeout(r, waitMs));
         return this.request(method, path, body);
       }
 

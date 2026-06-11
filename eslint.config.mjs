@@ -16,6 +16,9 @@ export default defineConfig([
       globals: {
         ...globals.browser,
         ...globals.node,
+        // Obsidian-provided globals (declared in obsidian.d.ts)
+        activeWindow: "readonly",
+        activeDocument: "readonly",
       },
     },
     plugins: {

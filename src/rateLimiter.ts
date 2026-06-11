@@ -86,7 +86,7 @@ export class RateLimiter {
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => activeWindow.setTimeout(resolve, ms));
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
   }
 
   /** Number of items waiting in the queue */

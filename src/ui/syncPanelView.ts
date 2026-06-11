@@ -44,13 +44,13 @@ export class SyncPanelView extends ItemView {
   onOpen(): Promise<void> {
     this.render();
     // Refresh status every 30s
-    this.refreshInterval = activeWindow.setInterval(() => this.refreshStatus(), 30_000);
+    this.refreshInterval = window.setInterval(() => this.refreshStatus(), 30_000);
     return Promise.resolve();
   }
 
   onClose(): Promise<void> {
     if (this.refreshInterval !== null) {
-      activeWindow.clearInterval(this.refreshInterval);
+      window.clearInterval(this.refreshInterval);
       this.refreshInterval = null;
     }
     return Promise.resolve();
@@ -65,7 +65,7 @@ export class SyncPanelView extends ItemView {
     // ── Header & Status Brand ────────────────────────────────
     const header = root.createDiv({ cls: "notion-sync-header" });
     const brand = header.createDiv({ cls: "notion-sync-brand" });
-    brand.createEl("h3", { text: "Notion Sync" });
+    brand.createEl("h3", { text: "Notion sync" });
     this.badgeEl = header.createDiv();
     this.updateStatusBadge();
 
@@ -75,10 +75,10 @@ export class SyncPanelView extends ItemView {
     // Primary Action (Push Vault)
     const pushBtn = actionsCard.createEl("button", {
       cls: "notion-sync-btn-primary",
-      attr: { "aria-label": "Push: Sync entire vault to Notion" }
+      attr: { "aria-label": "Push: sync entire vault to Notion" }
     });
     setIcon(pushBtn, "upload-cloud");
-    pushBtn.createSpan({ text: "Push Vault to Notion" });
+    pushBtn.createSpan({ text: "Push vault to Notion" });
     pushBtn.addEventListener("click", () => {
       void this.runAction(() => this.plugin.syncFullVaultPublic());
     });
@@ -122,7 +122,7 @@ export class SyncPanelView extends ItemView {
 
     // ── Mode selector card ─────────────────────────────────────
     const modeCard = root.createDiv({ cls: "notion-sync-card-section" });
-    modeCard.createEl("p", { text: "Auto Sync Mode", cls: "notion-sync-card-section-title" });
+    modeCard.createEl("p", { text: "Auto sync mode", cls: "notion-sync-card-section-title" });
 
     const selectWrapper = modeCard.createDiv({ cls: "notion-sync-select-wrapper" });
     const modeSelect = selectWrapper.createEl("select", { cls: "notion-sync-select" });

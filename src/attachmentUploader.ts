@@ -1,5 +1,5 @@
-import { requestUrl } from "obsidian";
-import type { App, TFile } from "obsidian";
+import { requestUrl, TFile } from "obsidian";
+import type { App } from "obsidian";
 import type { NotionBlock, NotionBlockContent } from "./types";
 import type { StateManager } from "./stateManager";
 
@@ -132,9 +132,8 @@ export class AttachmentUploader {
 
     for (const p of tryPaths) {
       const abstract = this.app.vault.getAbstractFileByPath(p);
-      // Only return if a file exists at the path and it's a TFile
-      if (abstract && (abstract as any).path === p && (abstract as any).name) {
-        return abstract as unknown as TFile;
+      if (abstract instanceof TFile) {
+        return abstract;
       }
     }
 

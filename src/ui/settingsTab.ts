@@ -68,7 +68,7 @@ export class NotionSyncSettingTab extends PluginSettingTab {
           } catch {
             button.setButtonText("Failed");
           }
-          activeWindow.setTimeout(() => {
+          window.setTimeout(() => {
             button.setButtonText("Test");
             button.setDisabled(false);
           }, 2000);
